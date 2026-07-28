@@ -11,22 +11,37 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Allow API call
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
-    allow_methods=["*"],
+    allow_origins=[
+        "http://localhost:5173",   # Vite dev server
+        "http://localhost:3000",   # React
+        "http://frontend:5173",    # Docker service name
+    ],
+    allow_methods=["*"],         
     allow_headers=["*"],
 )
 
-# Load mode
-MODEL_PATH = os.path.join(os.path.dirname(__file__), '..', 'src', 'rf_model.pkl')
-with open(MODEL_PATH, 'rb') as f:
-    model, feature_cols = pickle.load(f)
+# Build paths
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, '..', 'src', 'rf_model.pkl')
+DATA_PATH  = os.path.join(BASE_DIR, '..', 'data', 'test_features.csv')
 
-# Load sample data for dashboard display
-DATA_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'test_features.csv')
-df = pd.read_csv(DATA_PATH).sample(2000, random_state=42)
-df = df.fillna(0).replace([np.inf, -np.inf], 0)
+# Load mode
+try:
+    with open(MODEL_PATH, 'rb') as f:
+        model, feature_cols = pickle.load(f)
+    print(f"Model loaded. Features: {len(feature_cols)}")
+except FileNotFoundError:
+    raise RuntimeError(f"No model found: {MODEL_PATH}")
+
+try:
+    df_raw = pd.read_csv(DATA_PATH)
+    df = df_raw.sample(2000, random_state=42).fillna(0).replace([np.inf, -np.inf], 0)
+    print(f"Data loaded. Shape: {df.shape}")
+except FileNotFoundError:
+    raise RuntimeError(f"No data found: {DATA_PATH}")
 
 def get_predictions():
     X = df[feature_cols].fillna(0).replace([np.inf, -np.inf], 0)
@@ -39,7 +54,7 @@ def get_predictions():
 
 @app.get("/")
 def root():
-    return {"status": "running", "docs": "/docs"}
+    return {"status": "running", "message": "Network IDS API", "docs": "/docs"}
 
 
 @app.get("/api/stats")

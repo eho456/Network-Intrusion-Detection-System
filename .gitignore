@@ -5,3 +5,6 @@ __pycache__/
 data/
 .DS_Store
 *.ipynb_checkpoints
+
+frontend/node_modules/
+frontend/dist/
